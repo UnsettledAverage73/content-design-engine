@@ -19,26 +19,41 @@ class Scorer:
     async def score_media(self, file_path: Path) -> MediaScore:
         """
         Scores a media file using Gemini VLM.
+        For videos, samples keyframes and returns the highest score.
         """
-        # Resize image to avoid SSL/Broken pipe issues with large files in this environment
-        from PIL import Image
-        import io
+        from src.ingestion.video import extract_keyframes
+        from src.config import SUPPORTED_VIDEO_EXTENSIONS
         
-        with Image.open(file_path) as img:
-            # Convert to RGB if necessary (e.g. for PNGs with alpha)
-            if img.mode != "RGB":
-                img = img.convert("RGB")
+        if file_path.suffix.lower() in SUPPORTED_VIDEO_EXTENSIONS:
+            keyframes = extract_keyframes(file_path)
+            if not keyframes:
+                return MediaScore(technical_score=1, marketing_score=1, justification="Failed to extract video keyframes.")
             
-            # Max dimension 1024px while preserving aspect ratio
-            img.thumbnail((1024, 1024))
+            best_score = None
+            for timestamp, frame_data in keyframes:
+                score = await self._get_vlm_score(frame_data)
+                if best_score is None or score.marketing_score > best_score.marketing_score:
+                    score.justification = f"[Frame at {timestamp:.2}s] {score.justification}"
+                    best_score = score
+            return best_score
+        else:
+            # Handle Image
+            from PIL import Image
+            import io
             
-            # Save to byte stream
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='JPEG', quality=85)
-            image_data = img_byte_arr.getvalue()
+            with Image.open(file_path) as img:
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
+                img.thumbnail((1024, 1024))
+                img_byte_arr = io.BytesIO()
+                img.save(img_byte_arr, format='JPEG', quality=85)
+                image_data = img_byte_arr.getvalue()
+            
+            return await self._get_vlm_score(image_data)
 
+    async def _get_vlm_score(self, image_data: bytes) -> MediaScore:
         prompt = """
-        Evaluate this image for a marketing content engine. 
+        Evaluate this image/frame for a marketing content engine. 
         Assign a technical_score (1-10) based on sharpness, exposure, and composition.
         Assign a marketing_score (1-10) based on brand logo visibility, human emotion, and 'hero shot' potential.
         Provide a brief justification for your scores.

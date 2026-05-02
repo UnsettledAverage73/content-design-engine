@@ -4,3 +4,7 @@ python-dotenv
 pydantic
 aiofiles
 exifread
+fastapi
+uvicorn
+opencv-python-headless
+mangum
