@@ -16,3 +16,21 @@ export async function fetchEvents(): Promise<Event[]> {
   }
   return response.json();
 }
+
+export async function processEvent(inputPath: string, brandId?: number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/process-event`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      input_path: inputPath,
+      brand_id: brandId,
+    }),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.detail || "Failed to process event");
+  }
+  return response.json();
+}
