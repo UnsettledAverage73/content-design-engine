@@ -2,7 +2,8 @@ from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 
 class ProcessEventRequest(BaseModel):
-    input_path: str
+    input_path: Optional[str] = None # For local dev
+    media_urls: Optional[List[str]] = None # For cloud SaaS
     brand_id: Optional[int] = None
     event_metadata: Optional[Dict[str, Any]] = None
 

@@ -60,7 +60,12 @@ async def process_event(request: ProcessEventRequest, user: User = Depends(get_c
     orchestrator = ContentOrchestrator()
     builder = OutputBuilder(OUTPUT_DIR)
 
-    state = await orchestrator.run(input_path, brand_id=request.brand_id, user_id=user["id"])
+    state = await orchestrator.run(
+        input_dir=Path(request.input_path) if request.input_path else None,
+        media_urls=request.media_urls,
+        brand_id=request.brand_id,
+        user_id=user["id"]
+    )
 
     
     # Override metadata if provided

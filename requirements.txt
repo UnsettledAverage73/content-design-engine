@@ -11,5 +11,7 @@ mangum
 sqlalchemy
 psycopg2-binary
 pypdf
+supabase
+python-jose[cryptography]
 livekit-agents
 livekit-plugins-openai
