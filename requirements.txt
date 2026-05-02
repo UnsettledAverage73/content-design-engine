@@ -1,0 +1,6 @@
+google-genai
+Pillow
+python-dotenv
+pydantic
+aiofiles
+exifread
