@@ -5,7 +5,27 @@ from src.orchestration.workflow import ContentOrchestrator
 from src.output.builder import OutputBuilder
 from src.config import OUTPUT_DIR
 
+from src.database.client import SessionLocal
+from src.database.models import Event as DBEvent
+
 router = APIRouter()
+
+@router.get("/events")
+async def list_events():
+    db = SessionLocal()
+    events = db.query(DBEvent).all()
+    result = []
+    for event in events:
+        result.append({
+            "id": event.id,
+            "name": event.name,
+            "location": event.location,
+            "date": event.date,
+            "asset_count": len(event.assets),
+            "generation_count": len(event.generations)
+        })
+    db.close()
+    return result
 
 @router.post("/process-event", response_model=ProcessEventResponse)
 async def process_event(request: ProcessEventRequest):

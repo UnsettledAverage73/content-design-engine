@@ -8,8 +8,13 @@ from src.config import INPUT_DIR, OUTPUT_DIR
 from src.orchestration.workflow import ContentOrchestrator
 from src.output.builder import OutputBuilder
 
+from src.database.client import init_db
+
 app = FastAPI(title="Content Intelligence Engine API")
 app.include_router(router, prefix="/api")
+
+# Initialize DB
+init_db()
 
 async def run_cli(input_path: Path):
     if not input_path.exists():
