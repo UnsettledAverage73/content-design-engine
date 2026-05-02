@@ -25,7 +25,7 @@ class ContentOrchestrator:
         self.qa = QAAgent()
         self.voice = VoiceAgent()
 
-    async def run(self, input_dir: Path, brand_id: Optional[int] = None):
+    async def run(self, input_dir: Path, brand_id: Optional[int] = None, user_id: Optional[str] = None):
         print(f"--- Scanning directory: {input_dir} ---")
         files = await scan_directory(input_dir)
         print(f"Found {len(files)} media files.")
@@ -38,7 +38,11 @@ class ContentOrchestrator:
         # Load Brand Context if provided
         from src.database.models import Brand as DBBrand
         if brand_id:
-            db_brand = db.query(DBBrand).filter(DBBrand.id == brand_id).first()
+            # Security: Ensure brand belongs to user if user_id is provided
+            query = db.query(DBBrand).filter(DBBrand.id == brand_id)
+            if user_id:
+                query = query.filter(DBBrand.user_id == user_id)
+            db_brand = query.first()
             if db_brand:
                 from src.ingestion.brand import get_brand_persona_prompt
                 state.brand_context = get_brand_persona_prompt(db_brand.guidelines_text)
@@ -51,6 +55,7 @@ class ContentOrchestrator:
         }
 
         db_event = DBEvent(
+            user_id=user_id,
             brand_id=brand_id,
             name=state.event_metadata["event_name"],
             location=state.event_metadata["location"],

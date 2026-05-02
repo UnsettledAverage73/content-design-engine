@@ -7,24 +7,25 @@ from src.config import OUTPUT_DIR
 
 from src.database.client import SessionLocal
 from src.database.models import Event as DBEvent, Brand as DBBrand
-from src.ingestion.brand import extract_brand_context
+from fastapi import APIRouter, HTTPException, Depends
+from src.api.auth import get_current_user, User
 
 router = APIRouter()
 
 @router.post("/brands", response_model=BrandResponse)
-async def create_brand(request: BrandCreate):
+async def create_brand(request: BrandCreate, user: User = Depends(get_current_user)):
     db = SessionLocal()
     brand_text = ""
     if request.guidelines_pdf_path:
         pdf_path = Path(request.guidelines_pdf_path)
         if pdf_path.exists():
             brand_text = extract_brand_context(pdf_path)
-    
-    db_brand = DBBrand(name=request.name, guidelines_text=brand_text)
+
+    db_brand = DBBrand(user_id=user["id"], name=request.name, guidelines_text=brand_text)
     db.add(db_brand)
     db.commit()
     db.refresh(db_brand)
-    
+
     response = BrandResponse(
         id=db_brand.id,
         name=db_brand.name,
@@ -34,9 +35,9 @@ async def create_brand(request: BrandCreate):
     return response
 
 @router.get("/events")
-async def list_events():
+async def list_events(user: User = Depends(get_current_user)):
     db = SessionLocal()
-    events = db.query(DBEvent).all()
+    events = db.query(DBEvent).filter(DBEvent.user_id == user["id"]).all()
     result = []
     for event in events:
         result.append({
@@ -51,7 +52,7 @@ async def list_events():
     return result
 
 @router.post("/process-event", response_model=ProcessEventResponse)
-async def process_event(request: ProcessEventRequest):
+async def process_event(request: ProcessEventRequest, user: User = Depends(get_current_user)):
     input_path = Path(request.input_path)
     if not input_path.exists():
         raise HTTPException(status_code=404, detail=f"Input path {request.input_path} not found")
@@ -59,7 +60,8 @@ async def process_event(request: ProcessEventRequest):
     orchestrator = ContentOrchestrator()
     builder = OutputBuilder(OUTPUT_DIR)
 
-    state = await orchestrator.run(input_path, brand_id=request.brand_id)
+    state = await orchestrator.run(input_path, brand_id=request.brand_id, user_id=user["id"])
+
     
     # Override metadata if provided
     if request.event_metadata:

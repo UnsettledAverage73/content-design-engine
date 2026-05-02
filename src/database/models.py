@@ -8,6 +8,8 @@ class Brand(Base):
     __tablename__ = "brands"
     
     id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=False, index=True) # Supabase User ID
+    org_id = Column(String, index=True) # Optional Organization ID
     name = Column(String, nullable=False)
     guidelines_text = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -18,6 +20,7 @@ class Event(Base):
     __tablename__ = "events"
     
     id = Column(Integer, primary_key=True)
+    user_id = Column(String, nullable=False, index=True)
     brand_id = Column(Integer, ForeignKey("brands.id"))
     name = Column(String, nullable=False)
     location = Column(String)
