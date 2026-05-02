@@ -14,5 +14,6 @@ class WorkflowState(BaseModel):
 ...
     linkedin_post: Optional[str] = None
     instagram_caption: Optional[str] = None
+    instagram_voice_over_path: Optional[str] = None
     qa_report: Optional[str] = None
     is_verified: bool = False

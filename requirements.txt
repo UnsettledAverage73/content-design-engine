@@ -11,3 +11,5 @@ mangum
 sqlalchemy
 psycopg2-binary
 pypdf
+livekit-agents
+livekit-plugins-openai

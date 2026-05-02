@@ -9,6 +9,7 @@ from src.orchestration.state import WorkflowState, MediaAsset
 from src.agents.analyst import AnalystAgent
 from src.agents.creator import CreatorAgent
 from src.agents.qa import QAAgent
+from src.agents.voice import VoiceAgent
 from src.config import OUTPUT_DIR
 
 from src.database.client import SessionLocal
@@ -22,6 +23,7 @@ class ContentOrchestrator:
         self.analyst = AnalystAgent()
         self.creator = CreatorAgent()
         self.qa = QAAgent()
+        self.voice = VoiceAgent()
 
     async def run(self, input_dir: Path, brand_id: Optional[int] = None):
         print(f"--- Scanning directory: {input_dir} ---")
@@ -105,6 +107,14 @@ class ContentOrchestrator:
         state.instagram_caption = social_content["instagram"]
         db.add(DBGeneration(event_id=db_event.id, platform="linkedin", content=state.linkedin_post))
         db.add(DBGeneration(event_id=db_event.id, platform="instagram", content=state.instagram_caption))
+
+        print("--- Agent D (Voice): Generating Instagram Voice-Over ---")
+        voice_path = OUTPUT_DIR / "instagram" / "voice_over.mp3"
+        voice_path.parent.mkdir(parents=True, exist_ok=True)
+        generated_voice = await self.voice.generate_voice_over(state.instagram_caption, voice_path)
+        if generated_voice:
+            state.instagram_voice_over_path = str(generated_voice)
+            db.add(DBGeneration(event_id=db_event.id, platform="instagram_voice", content=str(generated_voice)))
 
         print("--- Agent C (QA): Performing Self-Reflection ---")
         qa_result = await self.qa.verify_content(state)
