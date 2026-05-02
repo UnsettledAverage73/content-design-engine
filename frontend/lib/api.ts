@@ -1,5 +1,8 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+// For this prototype, we'll use a dummy token to satisfy the backend check
+const DUMMY_TOKEN = "Bearer local-dev-token";
+
 export interface Event {
   id: number;
   name: string;
@@ -11,7 +14,11 @@ export interface Event {
 }
 
 export async function fetchEvents(): Promise<Event[]> {
-  const response = await fetch(`${API_BASE_URL}/events`);
+  const response = await fetch(`${API_BASE_URL}/events`, {
+    headers: {
+      "Authorization": DUMMY_TOKEN
+    }
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch events");
   }
@@ -19,7 +26,11 @@ export async function fetchEvents(): Promise<Event[]> {
 }
 
 export async function fetchEventDetails(eventId: number): Promise<any> {
-  const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+  const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+    headers: {
+      "Authorization": DUMMY_TOKEN
+    }
+  });
   if (!response.ok) {
     throw new Error("Failed to fetch event details");
   }
@@ -31,6 +42,7 @@ export async function processEvent(inputPath: string, brandId?: number): Promise
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": DUMMY_TOKEN
     },
     body: JSON.stringify({
       input_path: inputPath,
