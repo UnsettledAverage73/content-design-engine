@@ -21,7 +21,9 @@ class Event(Base):
     brand_id = Column(Integer, ForeignKey("brands.id"))
     name = Column(String, nullable=False)
     location = Column(String)
-...
+    date = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
     assets = relationship("Asset", back_populates="event")
     generations = relationship("Generation", back_populates="event")
     brand = relationship("Brand", back_populates="events")
