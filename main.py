@@ -8,9 +8,20 @@ from src.config import INPUT_DIR, OUTPUT_DIR
 from src.orchestration.workflow import ContentOrchestrator
 from src.output.builder import OutputBuilder
 
+from fastapi.middleware.cors import CORSMiddleware
 from src.database.client import init_db
 
 app = FastAPI(title="Content Intelligence Engine API")
+
+# Enable CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # In production, replace with specific origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(router, prefix="/api")
 
 # Initialize DB
