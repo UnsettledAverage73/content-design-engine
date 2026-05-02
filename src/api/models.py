@@ -24,9 +24,5 @@ class MediaAssetResponse(BaseModel):
 
 class ProcessEventResponse(BaseModel):
     status: str
-    selected_assets: List[MediaAssetResponse]
-    case_study: Optional[str]
-    linkedin_post: Optional[str]
-    instagram_caption: Optional[str]
-    qa_report: Optional[str]
-    dist_path: str
+    event_id: int
+    message: str

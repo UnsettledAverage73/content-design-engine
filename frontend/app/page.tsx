@@ -113,7 +113,13 @@ export default function Dashboard() {
                     <div className="p-6">
                       <div className="flex justify-between items-start">
                         <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{event.name}</h3>
-                        <span className="text-[10px] px-2 py-1 bg-green-50 text-green-700 rounded-full font-bold uppercase tracking-wider">Completed</span>
+                        <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase tracking-wider ${
+                          event.status === 'completed' ? 'bg-green-50 text-green-700' : 
+                          event.status === 'processing' ? 'bg-blue-50 text-blue-700 animate-pulse' : 
+                          'bg-red-50 text-red-700'
+                        }`}>
+                          {event.status}
+                        </span>
                       </div>
                       <div className="mt-4 space-y-2">
                         <div className="flex items-center text-sm text-gray-600">

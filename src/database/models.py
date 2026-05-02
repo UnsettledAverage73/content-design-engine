@@ -25,6 +25,8 @@ class Event(Base):
     name = Column(String, nullable=False)
     location = Column(String)
     date = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="processing") # processing, completed, failed
+    job_id = Column(String, index=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     assets = relationship("Asset", back_populates="event")

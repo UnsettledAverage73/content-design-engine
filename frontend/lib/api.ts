@@ -5,6 +5,7 @@ export interface Event {
   name: string;
   location: string;
   date: string;
+  status: string;
   asset_count: number;
   generation_count: number;
 }

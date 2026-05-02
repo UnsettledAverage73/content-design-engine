@@ -45,61 +45,52 @@ async def list_events(user: User = Depends(get_current_user)):
             "name": event.name,
             "location": event.location,
             "date": event.date,
+            "status": event.status,
             "asset_count": len(event.assets),
             "generation_count": len(event.generations)
         })
     db.close()
     return result
 
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
+import uuid
+
 @router.post("/process-event", response_model=ProcessEventResponse)
-async def process_event(request: ProcessEventRequest, user: User = Depends(get_current_user)):
-    input_path = Path(request.input_path)
-    if not input_path.exists():
-        raise HTTPException(status_code=404, detail=f"Input path {request.input_path} not found")
-
+async def process_event(request: ProcessEventRequest, background_tasks: BackgroundTasks, user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    
+    # Create Event Record immediately
+    event_name = request.event_metadata.get("event_name", "New Event") if request.event_metadata else "New Event"
+    location = request.event_metadata.get("location", "Remote") if request.event_metadata else "Remote"
+    
+    db_event = DBEvent(
+        user_id=user["id"],
+        brand_id=request.brand_id,
+        name=event_name,
+        location=location,
+        status="processing",
+        job_id=str(uuid.uuid4())
+    )
+    db.add(db_event)
+    db.commit()
+    db.refresh(db_event)
+    
     orchestrator = ContentOrchestrator()
-    builder = OutputBuilder(OUTPUT_DIR)
-
-    state = await orchestrator.run(
+    
+    # Launch in background
+    background_tasks.add_task(
+        orchestrator.run,
+        event_id=db_event.id,
         input_dir=Path(request.input_path) if request.input_path else None,
         media_urls=request.media_urls,
         brand_id=request.brand_id,
         user_id=user["id"]
     )
 
+    db.close()
     
-    # Override metadata if provided
-    if request.event_metadata:
-        state.event_metadata.update(request.event_metadata)
-
-    if not state or not state.selected_assets:
-        return ProcessEventResponse(
-            status="no_assets_selected",
-            selected_assets=[],
-            case_study=None,
-            linkedin_post=None,
-            instagram_caption=None,
-            qa_report=None,
-            dist_path=str(OUTPUT_DIR)
-        )
-
-    await builder.build(state)
-
-    selected_assets = [
-        MediaAssetResponse(
-            file_path=asset.file_path,
-            technical_score=asset.score["technical_score"],
-            marketing_score=asset.score["marketing_score"],
-            justification=asset.score["justification"]
-        ) for asset in state.selected_assets
-    ]
-
     return ProcessEventResponse(
-        status="success",
-        selected_assets=selected_assets,
-        case_study=state.case_study,
-        linkedin_post=state.linkedin_post,
-        instagram_caption=state.instagram_caption,
-        qa_report=state.qa_report,
-        dist_path=str(OUTPUT_DIR)
+        status="processing",
+        event_id=db_event.id,
+        message="Event processing started in background."
     )
