@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [inputMode, setInputMode] = useState<"local" | "cloud">("local");
@@ -22,24 +23,34 @@ export default function Dashboard() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadEvents = () => {
-    setLoading(true);
-    fetchEvents()
-      .then(setEvents)
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  };
-
   useEffect(() => {
     loadEvents();
-    // Poll for status updates every 5 seconds if there are processing events
-    const interval = setInterval(() => {
-        if (events.some(e => e.status === 'processing')) {
-            fetchEvents().then(setEvents).catch(console.error);
+    
+    // Stable polling interval
+    const interval = setInterval(async () => {
+        // We fetch events and check their status
+        try {
+            const currentEvents = await fetchEvents();
+            setEvents(currentEvents);
+        } catch (e) {
+            console.error("Polling failed", e);
         }
     }, 5000);
+
     return () => clearInterval(interval);
-  }, [events]);
+  }, []);
+
+  const loadEvents = () => {
+    setLoading(true);
+    setError(null);
+    fetchEvents()
+      .then(setEvents)
+      .catch((e) => {
+        console.error(e);
+        setError("Failed to synchronize with backend infrastructure.");
+      })
+      .finally(() => setLoading(false));
+  };
 
   const loadEventDetails = async (id: number) => {
     try {
@@ -296,7 +307,13 @@ export default function Dashboard() {
         </header>
 
         <div className="p-10 max-w-7xl mx-auto">
-          {loading ? (
+          {error ? (
+            <div className="flex flex-col items-center justify-center h-[50vh] space-y-6">
+              <AlertCircle className="w-12 h-12 text-rose-500" />
+              <p className="text-slate-900 font-black text-lg">{error}</p>
+              <button onClick={loadEvents} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all">Retry Connection</button>
+            </div>
+          ) : loading ? (
             <div className="flex flex-col items-center justify-center h-[50vh] space-y-6">
               <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
               <p className="text-slate-400 font-black text-xs uppercase tracking-widest">Synchronizing Infrastructure...</p>
