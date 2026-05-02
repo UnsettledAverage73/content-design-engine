@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchEvents, processEvent, Event } from "@/lib/api";
-import { LayoutDashboard, Users, FileText, Settings, Plus, MapPin, Calendar, Image as ImageIcon, X, Loader2 } from "lucide-react";
+import { fetchEvents, processEvent, fetchEventDetails, Event } from "@/lib/api";
+import { 
+  LayoutDashboard, Users, FileText, Settings, Plus, MapPin, Calendar, 
+  Image as ImageIcon, X, Loader2, ArrowLeft, CheckCircle2, AlertCircle, 
+  BarChart3, MessageSquare, Mic, FileEdit
+} from "lucide-react";
 
 export default function Dashboard() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -10,6 +14,9 @@ export default function Dashboard() {
   const [showModal, setShowModal] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [inputPath, setInputPath] = useState("input/");
+  const [selectedEventId, setSelectedEventId] = useState<number | null>(null);
+  const [eventDetails, setEventDetails] = useState<any>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
 
   const loadEvents = () => {
     setLoading(true);
@@ -22,6 +29,19 @@ export default function Dashboard() {
   useEffect(() => {
     loadEvents();
   }, []);
+
+  const loadEventDetails = async (id: number) => {
+    setDetailsLoading(true);
+    try {
+      const details = await fetchEventDetails(id);
+      setEventDetails(details);
+      setSelectedEventId(id);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
 
   const handleProcess = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,6 +56,132 @@ export default function Dashboard() {
       setProcessing(false);
     }
   };
+
+  if (selectedEventId && eventDetails) {
+    return (
+      <div className="flex h-screen bg-gray-50 font-sans">
+        {/* Sidebar */}
+        <aside className="w-64 bg-white border-r border-gray-200 shadow-sm">
+          <div className="p-6">
+            <div className="flex items-center space-x-2" onClick={() => setSelectedEventId(null)}>
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center cursor-pointer">
+                <ImageIcon className="text-white w-5 h-5" />
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 tracking-tight cursor-pointer">Intelligence</h1>
+            </div>
+          </div>
+          <nav className="mt-6">
+            <button onClick={() => setSelectedEventId(null)} className="w-full flex items-center px-6 py-3 text-gray-500 hover:bg-gray-50 hover:text-blue-600 transition-all font-medium">
+              <ArrowLeft className="w-5 h-5 mr-3" />
+              Back to Dashboard
+            </button>
+          </nav>
+        </aside>
+
+        <main className="flex-1 overflow-y-auto">
+          <header className="px-8 py-8 bg-white border-b border-gray-200">
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-3xl font-extrabold text-gray-900">{eventDetails.name}</h2>
+                <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500 font-medium">
+                  <span className="flex items-center"><MapPin className="w-4 h-4 mr-1" /> {eventDetails.location}</span>
+                  <span className="flex items-center"><Calendar className="w-4 h-4 mr-1" /> {new Date(eventDetails.date).toLocaleDateString()}</span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                    eventDetails.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {eventDetails.status}
+                  </span>
+                </div>
+              </div>
+              <div className="flex space-x-3">
+                <button className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50 transition-all">Download Assets</button>
+                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 shadow-md shadow-blue-100 transition-all">Approve All</button>
+              </div>
+            </div>
+          </header>
+
+          <div className="p-8 space-y-12">
+            {/* Media Gallery */}
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                  <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
+                  Media Intelligence & Scoring
+                </h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {eventDetails.assets.map((asset: any) => (
+                  <div key={asset.id} className={`bg-white rounded-2xl border p-5 transition-all hover:shadow-lg ${asset.is_selected ? 'border-blue-200' : 'border-gray-200 opacity-60'}`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{asset.file_type}</span>
+                      {asset.is_selected ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="w-5 h-5 text-gray-300" />
+                      )}
+                    </div>
+                    <div className="aspect-video bg-gray-100 rounded-lg mb-4 flex items-center justify-center border border-gray-50">
+                       <p className="text-xs text-gray-400 font-medium">{asset.file_path.split('/').pop()}</p>
+                    </div>
+                    <div className="flex space-x-4 mb-3">
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Tech</p>
+                        <p className={`text-lg font-black ${asset.technical_score >= 7 ? 'text-green-600' : 'text-orange-500'}`}>{asset.technical_score}/10</p>
+                      </div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Market</p>
+                        <p className={`text-lg font-black ${asset.marketing_score >= 7 ? 'text-blue-600' : 'text-orange-500'}`}>{asset.marketing_score}/10</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 italic leading-relaxed line-clamp-3">"{asset.justification}"</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            {/* Generated Content */}
+            <section>
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
+                <FileEdit className="w-5 h-5 mr-2 text-blue-600" />
+                Multi-Modal Content Generation
+              </h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {eventDetails.generations.map((gen: any) => (
+                  <div key={gen.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div className="p-6 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
+                      <div className="flex items-center">
+                        {gen.platform === 'linkedin' && <MessageSquare className="w-5 h-5 text-blue-700 mr-2" />}
+                        {gen.platform === 'instagram' && <ImageIcon className="w-5 h-5 text-pink-600 mr-2" />}
+                        {gen.platform === 'instagram_voice' && <Mic className="w-5 h-5 text-purple-600 mr-2" />}
+                        {gen.platform === 'case_study' && <FileText className="w-5 h-5 text-emerald-600 mr-2" />}
+                        <h4 className="font-bold text-gray-900 capitalize">{gen.platform.replace('_', ' ')}</h4>
+                      </div>
+                      <button className="text-blue-600 text-xs font-bold hover:underline">Edit Draft</button>
+                    </div>
+                    <div className="p-6">
+                      <div className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap max-h-64 overflow-y-auto bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+                        {gen.content}
+                      </div>
+                      <div className="mt-6 flex justify-between items-center">
+                        <div className="flex items-center text-[10px] font-bold text-green-600 uppercase tracking-widest">
+                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          QA Verified
+                        </div>
+                        <div className="flex space-x-2">
+                          <button className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"><X className="w-4 h-4" /></button>
+                          <button className="p-2 text-green-500 hover:bg-green-50 rounded-lg transition-colors"><CheckCircle2 className="w-4 h-4" /></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-gray-50 font-sans">
@@ -109,7 +255,11 @@ export default function Dashboard() {
                 </div>
               ) : (
                 events.map((event) => (
-                  <div key={event.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all group cursor-pointer">
+                  <div 
+                    key={event.id} 
+                    onClick={() => loadEventDetails(event.id)}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all group cursor-pointer"
+                  >
                     <div className="p-6">
                       <div className="flex justify-between items-start">
                         <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{event.name}</h3>

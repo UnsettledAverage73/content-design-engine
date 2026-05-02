@@ -18,6 +18,14 @@ export async function fetchEvents(): Promise<Event[]> {
   return response.json();
 }
 
+export async function fetchEventDetails(eventId: number): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/events/${eventId}`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch event details");
+  }
+  return response.json();
+}
+
 export async function processEvent(inputPath: string, brandId?: number): Promise<any> {
   const response = await fetch(`${API_BASE_URL}/process-event`, {
     method: "POST",

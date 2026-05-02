@@ -1,14 +1,14 @@
-from fastapi import APIRouter, HTTPException
+import uuid
 from pathlib import Path
+from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
 from src.api.models import ProcessEventRequest, ProcessEventResponse, MediaAssetResponse, BrandCreate, BrandResponse
+from src.api.auth import get_current_user, User
 from src.orchestration.workflow import ContentOrchestrator
 from src.output.builder import OutputBuilder
 from src.config import OUTPUT_DIR
-
 from src.database.client import SessionLocal
 from src.database.models import Event as DBEvent, Brand as DBBrand
-from fastapi import APIRouter, HTTPException, Depends
-from src.api.auth import get_current_user, User
+from src.ingestion.brand import extract_brand_context
 
 router = APIRouter()
 
@@ -52,8 +52,43 @@ async def list_events(user: User = Depends(get_current_user)):
     db.close()
     return result
 
-from fastapi import APIRouter, HTTPException, Depends, BackgroundTasks
-import uuid
+@router.get("/events/{event_id}")
+async def get_event(event_id: int, user: User = Depends(get_current_user)):
+    db = SessionLocal()
+    event = db.query(DBEvent).filter(DBEvent.id == event_id, DBEvent.user_id == user["id"]).first()
+    if not event:
+        db.close()
+        raise HTTPException(status_code=404, detail="Event not found")
+    
+    result = {
+        "id": event.id,
+        "name": event.name,
+        "location": event.location,
+        "date": event.date,
+        "status": event.status,
+        "assets": [
+            {
+                "id": a.id,
+                "file_path": a.file_path,
+                "file_type": a.file_type,
+                "technical_score": a.technical_score,
+                "marketing_score": a.marketing_score,
+                "justification": a.justification,
+                "is_selected": a.is_selected
+            } for a in event.assets
+        ],
+        "generations": [
+            {
+                "id": g.id,
+                "platform": g.platform,
+                "content": g.content,
+                "qa_report": g.qa_report,
+                "is_verified": g.is_verified
+            } for g in event.generations
+        ]
+    }
+    db.close()
+    return result
 
 @router.post("/process-event", response_model=ProcessEventResponse)
 async def process_event(request: ProcessEventRequest, background_tasks: BackgroundTasks, user: User = Depends(get_current_user)):
