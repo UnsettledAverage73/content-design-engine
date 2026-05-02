@@ -83,6 +83,28 @@ class ContentOrchestrator:
                 score = await self.scorer.score_media(file_path)
                 selected = is_selected(score)
                 
+                # Intelligent Bootstrapping: If event name is generic, refine it using the first high-quality image
+                if db_event.name == "New Event" and selected and not state.selected_assets:
+                    print(f"--- Refining event metadata using {file_path.name} ---")
+                    refinement_prompt = "Based on this image and its metadata, suggest a specific event name and city location. Return JSON: {event_name, location}"
+                    try:
+                        with open(file_path, "rb") as f: img_data = f.read()
+                        # Simple direct call to refine metadata
+                        resp = self.scorer.client.models.generate_content(
+                            model=self.scorer.model_id,
+                            contents=[refinement_prompt, types.Part.from_bytes(data=img_data, mime_type="image/jpeg")],
+                            config=types.GenerateContentConfig(response_mime_type="application/json")
+                        )
+                        refinement = json.loads(resp.text)
+                        db_event.name = refinement.get("event_name", db_event.name)
+                        db_event.location = refinement.get("location", db_event.location)
+                        db.commit()
+                        # Update state
+                        state.event_metadata["event_name"] = db_event.name
+                        state.event_metadata["location"] = db_event.location
+                    except Exception as e:
+                        print(f"Metadata refinement failed: {e}")
+
                 db_asset = DBAsset(
                     event_id=db_event.id,
                     file_path=str(file_path),
