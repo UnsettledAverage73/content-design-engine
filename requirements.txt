@@ -10,3 +10,4 @@ opencv-python-headless
 mangum
 sqlalchemy
 psycopg2-binary
+pypdf

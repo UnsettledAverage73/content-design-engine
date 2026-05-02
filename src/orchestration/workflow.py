@@ -23,13 +23,24 @@ class ContentOrchestrator:
         self.creator = CreatorAgent()
         self.qa = QAAgent()
 
-    async def run(self, input_dir: Path):
+    async def run(self, input_dir: Path, brand_id: Optional[int] = None):
         print(f"--- Scanning directory: {input_dir} ---")
         files = await scan_directory(input_dir)
         print(f"Found {len(files)} media files.")
 
         state = WorkflowState()
         
+        # DB Setup
+        db = SessionLocal()
+        
+        # Load Brand Context if provided
+        from src.database.models import Brand as DBBrand
+        if brand_id:
+            db_brand = db.query(DBBrand).filter(DBBrand.id == brand_id).first()
+            if db_brand:
+                from src.ingestion.brand import get_brand_persona_prompt
+                state.brand_context = get_brand_persona_prompt(db_brand.guidelines_text)
+
         # Mocking event metadata for this demo
         state.event_metadata = {
             "event_name": "Tech Innovation Summit 2026",
@@ -37,9 +48,8 @@ class ContentOrchestrator:
             "date": "2026-05-02"
         }
 
-        # DB Setup
-        db = SessionLocal()
         db_event = DBEvent(
+            brand_id=brand_id,
             name=state.event_metadata["event_name"],
             location=state.event_metadata["location"],
             date=datetime.fromisoformat(state.event_metadata["date"])

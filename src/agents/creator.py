@@ -8,7 +8,11 @@ class CreatorAgent:
         self.model_id = "gemini-2.5-flash"
 
     async def generate_social_content(self, state: WorkflowState) -> dict:
+        brand_persona = state.brand_context or "You are a professional social media manager."
+        
         linkedin_prompt = f"""
+        {brand_persona}
+        
         Write a professional LinkedIn post based on this event. 
         Focus on industry insights and networking value.
         
@@ -17,6 +21,8 @@ class CreatorAgent:
         """
         
         instagram_prompt = f"""
+        {brand_persona}
+        
         Write an energetic Instagram caption for a story or post.
         Use emojis and high-energy hooks.
         

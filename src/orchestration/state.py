@@ -6,11 +6,12 @@ class MediaAsset(BaseModel):
     file_path: str
     metadata: Dict[str, Any]
     score: Dict[str, Any]
-
 class WorkflowState(BaseModel):
     selected_assets: List[MediaAsset] = []
     event_metadata: Dict[str, Any] = {}
+    brand_context: Optional[str] = None
     case_study: Optional[str] = None
+...
     linkedin_post: Optional[str] = None
     instagram_caption: Optional[str] = None
     qa_report: Optional[str] = None
