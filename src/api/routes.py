@@ -1,14 +1,37 @@
 from fastapi import APIRouter, HTTPException
 from pathlib import Path
-from src.api.models import ProcessEventRequest, ProcessEventResponse, MediaAssetResponse
+from src.api.models import ProcessEventRequest, ProcessEventResponse, MediaAssetResponse, BrandCreate, BrandResponse
 from src.orchestration.workflow import ContentOrchestrator
 from src.output.builder import OutputBuilder
 from src.config import OUTPUT_DIR
 
 from src.database.client import SessionLocal
-from src.database.models import Event as DBEvent
+from src.database.models import Event as DBEvent, Brand as DBBrand
+from src.ingestion.brand import extract_brand_context
 
 router = APIRouter()
+
+@router.post("/brands", response_model=BrandResponse)
+async def create_brand(request: BrandCreate):
+    db = SessionLocal()
+    brand_text = ""
+    if request.guidelines_pdf_path:
+        pdf_path = Path(request.guidelines_pdf_path)
+        if pdf_path.exists():
+            brand_text = extract_brand_context(pdf_path)
+    
+    db_brand = DBBrand(name=request.name, guidelines_text=brand_text)
+    db.add(db_brand)
+    db.commit()
+    db.refresh(db_brand)
+    
+    response = BrandResponse(
+        id=db_brand.id,
+        name=db_brand.name,
+        created_at=db_brand.created_at.isoformat()
+    )
+    db.close()
+    return response
 
 @router.get("/events")
 async def list_events():
@@ -36,7 +59,7 @@ async def process_event(request: ProcessEventRequest):
     orchestrator = ContentOrchestrator()
     builder = OutputBuilder(OUTPUT_DIR)
 
-    state = await orchestrator.run(input_path)
+    state = await orchestrator.run(input_path, brand_id=request.brand_id)
     
     # Override metadata if provided
     if request.event_metadata:
